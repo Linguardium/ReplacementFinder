@@ -15,8 +15,10 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ReplacementFinder implements ModInitializer {
 	// This logger is used to write text to the console and the log file.
@@ -41,11 +43,13 @@ public class ReplacementFinder implements ModInitializer {
 		LOGGER.info("Hello Fabric world!");
 	}
 	private static void processNameSpaces(String modName, Path folder) throws IOException {
-		for (Path fName : Files.list(folder).toList()) {
-			if (fName.equals(folder))
-				continue;
-			if(Files.isDirectory(fName)) {
-				processFolder(modName, fName);
+		try (Stream<Path> paths = Files.list(folder)) {
+			for (Path fName :paths.toList()) {
+				if (fName.equals(folder))
+					continue;
+				if (Files.isDirectory(fName)) {
+					processFolder(modName, fName);
+				}
 			}
 		}
 	}
@@ -59,16 +63,15 @@ public class ReplacementFinder implements ModInitializer {
 
 	}
 	private static void processJson(String modName, Path namespaceFolder, Path file) {
-
+		//LOGGER.info("Checking {}:{}",namespaceFolder.getFileName(),namespaceFolder.resolve("tags").relativize(file));
 		try {
 			String jsonString = new String(Files.readAllBytes(file));
 			JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 			if (JsonHelper.getBoolean(json, "replace", false)) {
 				LOGGER.info("mod [{}] replaces data tag {}:{}",modName,namespaceFolder.getFileName(),namespaceFolder.resolve("tags").relativize(file));
 			}
-		} catch (IOException e) {
-			LOGGER.warn("failed to process {}",file.getFileName());
-			throw new RuntimeException(e);
+		} catch (IOException | JsonSyntaxException e) {
+			LOGGER.warn("failed to process {}:{} in [{}]",namespaceFolder.getFileName(),namespaceFolder.resolve("tags").relativize(file),modName);
 		}
 	}
 }
